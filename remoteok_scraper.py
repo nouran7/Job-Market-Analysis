@@ -72,3 +72,7 @@ combined_df.to_csv(
     index=False,
     encoding="utf-8-sig"
 )
+print("Jobs fetched:", len(new_jobs))
+print("Truly new jobs:", truly_new_jobs)
+print("Total unique jobs:", combined_df["job_id"].nunique())
+print("Data saved successfully!")
