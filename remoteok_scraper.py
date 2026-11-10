@@ -1,4 +1,5 @@
 
+
 import requests
 import pandas as pd
 import os
@@ -17,20 +18,31 @@ jobs_data = response.json()[1:]
 
 new_jobs = []
 
+scraped_at = datetime.now(timezone.utc).isoformat()
+
 for job in jobs_data:
+
+    job_id = job.get("id")
+
+    # Skip jobs without a valid ID
+    if job_id is None or str(job_id).strip() == "":
+        continue
+
+    tags = job.get("tags") or []
+
     new_jobs.append({
-        "job_id": str(job.get("id")),
+        "job_id": str(job_id),
         "job_title": job.get("position"),
         "company": job.get("company"),
         "location": job.get("location"),
-        "tags": ", ".join(job.get("tags", [])),
+        "tags": ", ".join(tags),
         "description": job.get("description"),
         "posted_date": job.get("date"),
         "salary_min": job.get("salary_min"),
         "salary_max": job.get("salary_max"),
         "job_url": job.get("url"),
         "apply_url": job.get("apply_url"),
-        "scraped_at": datetime.now(timezone.utc).isoformat()
+        "scraped_at": scraped_at
     })
 
 new_df = pd.DataFrame(new_jobs)
@@ -38,15 +50,37 @@ new_df = pd.DataFrame(new_jobs)
 file_path = "remoteok_jobs.csv"
 
 if os.path.exists(file_path):
+
     old_df = pd.read_csv(file_path, dtype={"job_id": str})
-    combined_df = pd.concat([old_df, new_df], ignore_index=True)
+
+    old_ids = set(old_df["job_id"].dropna())
+    new_ids = set(new_df["job_id"])
+
+    truly_new_jobs = len(new_ids - old_ids)
+
+    combined_df = pd.concat(
+        [old_df, new_df],
+        ignore_index=True
+    )
+
 else:
+    truly_new_jobs = new_df["job_id"].nunique()
     combined_df = new_df
 
-combined_df.drop_duplicates(subset=["job_id"], keep="first", inplace=True)
+# Keep the latest version of each job
+combined_df.drop_duplicates(
+    subset=["job_id"],
+    keep="last",
+    inplace=True
+)
 
-combined_df.to_csv(file_path, index=False, encoding="utf-8-sig")
+combined_df.to_csv(
+    file_path,
+    index=False,
+    encoding="utf-8-sig"
+)
 
-print("New jobs collected:", len(new_df))
-print("Total unique jobs:", len(combined_df))
+print("Jobs fetched:", len(new_df))
+print("Truly new jobs:", truly_new_jobs)
+print("Total unique jobs:", combined_df["job_id"].nunique())
 print("Data saved successfully!")
