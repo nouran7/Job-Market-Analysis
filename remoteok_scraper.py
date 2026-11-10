@@ -54,9 +54,10 @@ if os.path.exists(file_path):
     old_df = pd.read_csv(file_path, dtype={"job_id": str})
 
     old_ids = set(old_df["job_id"].dropna())
-    new_ids = set(new_df["job_id"])
 
-    truly_new_jobs = len(new_ids - old_ids)
+    new_df = new_df[
+        ~new_df["job_id"].isin(old_ids)
+    ]
 
     combined_df = pd.concat(
         [old_df, new_df],
@@ -64,23 +65,10 @@ if os.path.exists(file_path):
     )
 
 else:
-    truly_new_jobs = new_df["job_id"].nunique()
     combined_df = new_df
-
-# Keep the latest version of each job
-combined_df.drop_duplicates(
-    subset=["job_id"],
-    keep="last",
-    inplace=True
-)
 
 combined_df.to_csv(
     file_path,
     index=False,
     encoding="utf-8-sig"
 )
-
-print("Jobs fetched:", len(new_df))
-print("Truly new jobs:", truly_new_jobs)
-print("Total unique jobs:", combined_df["job_id"].nunique())
-print("Data saved successfully!")
